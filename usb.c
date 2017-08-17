@@ -1,12 +1,14 @@
 #include <stdio.h>
+
+#include <unistd.h>
 #include <libudev.h>
 
-struct udev_device* obtener_hijo(struct udev* udev, struct udev, device* padre, const char* subsitema){
+struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, const char* subsistema){
 	struct udev_device* hijo = NULL;
 	struct udev_enumerate *enumerar = udev_enumerate_new(udev);
 	
-	udev_enumerate_add_match_parent(enumerar,subsistema);
-	udev_enumerate_add_match_susbsytem(enumerar,subsistema);
+	udev_enumerate_add_match_parent(enumerar,padre);
+	udev_enumerate_add_match_subsystem(enumerar,subsistema);
 	udev_enumerate_scan_devices(enumerar);
 
 	struct udev_list_entry *dispositivos = udev_enumerate_get_list_entry(enumerar);
@@ -22,13 +24,13 @@ struct udev_device* obtener_hijo(struct udev* udev, struct udev, device* padre, 
 	return hijo;
 }
 
-static void enumerar_disp_alm_masivo(struct udev* udev){
+void enumerar_disp_alm_masivo(struct udev* udev){
 
 	struct udev_enumerate* enumerar = udev_enumerate_new(udev);
 
 	udev_enumerate_add_match_subsystem(enumerar,"scsi");
 	udev_enumerate_add_match_property(enumerar, "DEVTYPE", "scsi_device");
-	udev_enumerate_add_match_property(enumerar);
+	udev_enumerate_scan_devices(enumerar);
 
 	struct udev_list_entry *dispositivos = udev_enumerate_get_list_entry(enumerar);
 	struct udev_list_entry *entrada;
@@ -47,7 +49,7 @@ static void enumerar_disp_alm_masivo(struct udev* udev){
 				udev_device_get_devnode(block),
 				udev_device_get_sysattr_value(usb, "idVendor"),
 				udev_device_get_sysattr_value(usb, "idProduct"),
-				udev_device_get_sysattr_value(usb, "vendor"));
+				udev_device_get_sysattr_value(scsi, "vendor"));
 		}
 		if(block){
 			udev_device_unref(block);
@@ -63,6 +65,17 @@ static void enumerar_disp_alm_masivo(struct udev* udev){
 	udev_enumerate_unref(enumerar);
 }
 
+int main(int argc, char** argv){
 
+    //hacer un hilo que monitoree el programa
+    struct udev *p = udev_new();
+    while(1){
+    
+    
+        enumerar_disp_alm_masivo(p);
+        sleep(5);
+    }    
+    return(0);
+}
 
 
