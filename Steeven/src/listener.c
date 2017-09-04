@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <libudev.h>
+#include <mntent.h>
 
 struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, const char* subsistema);
 static void enumerar_disp_alm_masivo(struct udev* udev);
@@ -77,4 +78,24 @@ static void enumerar_disp_alm_masivo(struct udev* udev)
         udev_device_unref(scsi);
     }
     udev_enumerate_unref(enumerar);
+}
+
+char* Dispositivo(char *dir){
+	FILE *mtabfile;
+	struct mntent *mt;
+	
+	mtabfile = setmntent("/etc/mtab", "r");
+	if (mtabfile == NULL) {
+		return "error en al crear FILE mtab";
+	}
+	
+	while ((mt = getmntent(mt)) != NULL){
+		
+		if(strstr(mt->mnt_fsname,dir)>0){
+			endmntent(mtabfile);
+			return(char*) ft->mnt_dir;
+		}
+	}
+	endmntent(mtabfile);
+	return  "no se encuentra montado dicho dispositivo";
 }
