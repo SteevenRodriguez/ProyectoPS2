@@ -145,7 +145,7 @@ const char* MountPoint(const char *dir){
 	}
 	
 	while ((mt = getmntent(mtabfile)) != NULL){
-		printf("%s\n", mt->mnt_fsname);
+		
 		if(strstr(mt->mnt_fsname,dir)>0){
 			endmntent(mtabfile);
 			return  mt->mnt_dir;
