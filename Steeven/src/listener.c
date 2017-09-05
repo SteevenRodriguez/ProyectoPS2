@@ -40,7 +40,7 @@ struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, c
     udev_enumerate_unref(enumerar);
     return hijo;
 }
-char* MountPoint(char *dir){
+const char* MountPoint(const char *dir){
 	FILE *mtabfile;
 	struct mntent *mt;
 	
@@ -50,10 +50,10 @@ char* MountPoint(char *dir){
 	}
 	
 	while ((mt = getmntent(mtabfile)) != NULL){
-		
+		printf("%s\n", mt->mnt_fsname);
 		if(strstr(mt->mnt_fsname,dir)>0){
 			endmntent(mtabfile);
-			return(char*) mt->mnt_dir;
+			return  mt->mnt_dir;
 		}
 	}
 	endmntent(mtabfile);
