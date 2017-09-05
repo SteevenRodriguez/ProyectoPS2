@@ -26,7 +26,7 @@
    
    #define GET             0
    #define POST            1
-   
+   const char *JSON_STRING;
    struct connection_info_struct
    {
      int connectiontype;
@@ -49,6 +49,13 @@
    
      return ret;
    }
+static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
+	if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
+			strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+		return 0;
+	}
+	return -1;
+}
       
       
    static int iterate_post (void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
@@ -65,6 +72,39 @@
         la respuesta amacenarla en answerstring para enviarsela al cliente
        */
    
+	const char *JSON_STRING=data;
+	int i;
+	int r;
+	jsmn_parser p;
+	jsmntok_t t[128]; /* We expect no more than 128 tokens */
+
+	jsmn_init(&p);
+	r = jsmn_parse(&p, data, strlen(data), t, sizeof(t)/sizeof(t[0]));
+	if (r < 0) {
+		printf("Failed to parse JSON: %d\n", r);
+		return 1;
+	}
+
+	/* Assume the top-level element is an object */
+	if (r < 1 || t[0].type != JSMN_OBJECT) {
+		printf("Object expected\n");
+		return 1;
+	}
+	char* solicitud = (char *)malloc(20*sizeof(char));
+       //int tamano_contenido;
+     
+       /* Loop over all keys of the root object */
+       for (i = 1; i < r; i++) {
+         if (jsoneq(data, &t[i], "solicitud") == 0) {
+           /* We may use strndup() to fetch string value */
+           printf("- Solicitud: %.*s\n", t[i+1].end-t[i+1].start,
+                    data + t[i+1].start);
+           sprintf(solicitud, "%.*s", t[i+1].end-t[i+1].start, data + t[i+1].start);
+           i++;
+         }
+}
+
+
        char *answerstring;
        answerstring = malloc(10);
        if (!answerstring)
