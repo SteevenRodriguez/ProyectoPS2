@@ -7,6 +7,7 @@
 #include <libudev.h>
 #include <mntent.h>
 
+
 struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, const char* subsistema);
 static void enumerar_disp_alm_masivo(struct udev* udev);
 
@@ -39,6 +40,25 @@ struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, c
     udev_enumerate_unref(enumerar);
     return hijo;
 }
+char* MountPoint(char *dir){
+	FILE *mtabfile;
+	struct mntent *mt;
+	
+	mtabfile = setmntent("/etc/mtab", "r");
+	if (mtabfile == NULL) {
+		return "error en al crear FILE mtab";
+	}
+	
+	while ((mt = getmntent(mtabfile)) != NULL){
+		
+		if(strstr(mt->mnt_fsname,dir)>0){
+			endmntent(mtabfile);
+			return(char*) mt->mnt_dir;
+		}
+	}
+	endmntent(mtabfile);
+	return  "no se encuentra montado dicho dispositivo";
+}
 
 static void enumerar_disp_alm_masivo(struct udev* udev)
 {
@@ -62,8 +82,10 @@ static void enumerar_disp_alm_masivo(struct udev* udev)
 			= udev_device_get_parent_with_subsystem_devtype(scsi, "usb", "usb_device");
         
         if (block && scsi_disk && usb){
-            printf("block = %s, usb=%s:%s, scsi=%s\n",
-                udev_device_get_devnode(block),
+		const char* nodo = udev_device_get_devnode(block);
+            printf("block = %s, montaje = %s, usb=%s:%s, scsi=%s\n",
+                nodo,
+		MountPoint(nodo),
                 udev_device_get_sysattr_value(usb, "idVendor"),
                 udev_device_get_sysattr_value(usb, "idProduct"),
                 udev_device_get_sysattr_value(scsi, "vendor"));
@@ -80,22 +102,6 @@ static void enumerar_disp_alm_masivo(struct udev* udev)
     udev_enumerate_unref(enumerar);
 }
 
-char* Dispositivo(char *dir){
-	FILE *mtabfile;
-	struct mntent *mt;
-	
-	mtabfile = setmntent("/etc/mtab", "r");
-	if (mtabfile == NULL) {
-		return "error en al crear FILE mtab";
-	}
-	
-	while ((mt = getmntent(mt)) != NULL){
-		
-		if(strstr(mt->mnt_fsname,dir)>0){
-			endmntent(mtabfile);
-			return(char*) ft->mnt_dir;
-		}
-	}
-	endmntent(mtabfile);
-	return  "no se encuentra montado dicho dispositivo";
-}
+
+
+
