@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <libudev.h>
 #include <pthread.h>
+#include <mntent.h>
 
 /*
     while(1){
@@ -134,6 +135,25 @@ int main(int argc, char** argv){
 //////////////////////////////////////////////////////////////////////////////////
     return (0);
 }
+const char* MountPoint(const char *dir){
+	FILE *mtabfile;
+	struct mntent *mt;
+	
+	mtabfile = setmntent("/etc/mtab", "r");
+	if (mtabfile == NULL) {
+		return "error en al crear FILE mtab";
+	}
+	
+	while ((mt = getmntent(mtabfile)) != NULL){
+		printf("%s\n", mt->mnt_fsname);
+		if(strstr(mt->mnt_fsname,dir)>0){
+			endmntent(mtabfile);
+			return  mt->mnt_dir;
+		}
+	}
+	endmntent(mtabfile);
+	return  "no se encuentra montado dicho dispositivo";
+}
 
 struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, const char* subsistema)
 {
@@ -177,9 +197,12 @@ static void enumerar_disp_alm_masivo(struct udev* udev)
         struct udev_device* usb 
             = udev_device_get_parent_with_subsystem_devtype(scsi, "usb", "usb_device");
         
+        
         if (block && scsi_disk && usb){
-            printf("block = %s, usb=%s:%s, scsi=%s\n",
-                udev_device_get_devnode(block),
+		const char* nodo = udev_device_get_devnode(block);
+            printf("block = %s, montaje = %s, usb=%s:%s, scsi=%s\n",
+                nodo,
+		MountPoint(nodo),
                 udev_device_get_sysattr_value(usb, "idVendor"),
                 udev_device_get_sysattr_value(usb, "idProduct"),
                 udev_device_get_sysattr_value(scsi, "vendor"));
@@ -195,6 +218,8 @@ static void enumerar_disp_alm_masivo(struct udev* udev)
     }
     udev_enumerate_unref(enumerar);
 }
+
+
 
 void* monitorear(void* arg){
     while(1){
