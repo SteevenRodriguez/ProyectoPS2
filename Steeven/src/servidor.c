@@ -8,24 +8,27 @@
    #else
    #include <winsock2.h>
    #endif
+   
    #include <microhttpd.h>
    #include <stdio.h>
    #include <string.h>
    #include <stdlib.h>
    #include "jsmn.h"
+   #include <netinet/in.h>
    
    #if defined(_MSC_VER) && _MSC_VER+0 <= 1800
    /* Substitution is OK while return value is not used */
    #define snprintf _snprintf
    #endif
    
-   #define PORT            8888
+   #define PORT            4545
    #define POSTBUFFERSIZE  1024
    #define MAXNAMESIZE     1000
    #define MAXANSWERSIZE   1024
    
    #define GET             0
    #define POST            1
+   char* ip = "127.0.0.1";
    const char *JSON_STRING;
    struct connection_info_struct
    {
@@ -33,6 +36,8 @@
      char *answerstring;
      struct MHD_PostProcessor *postprocessor;
    };
+
+
       
    static int send_page (struct MHD_Connection *connection, const char *page){
      int ret;
@@ -103,10 +108,38 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
            i++;
          }
 }
+	int client;
+struct sockaddr_in direccion_cliente;
+    memset(&direccion_cliente, 0, sizeof(direccion_cliente));
+  direccion_cliente.sin_family = AF_INET;		
+  direccion_cliente.sin_port = htons(PORT);	
+  direccion_cliente.sin_addr.s_addr = inet_addr(ip);
 
+  client = socket(((struct sockaddr *)&direccion_cliente)->sa_family, SOCK_STREAM, 0);
+  if (client == -1)
+  {
+  	printf("Error al abrir el socket\n");
+  	return -1;
+  }
+  printf("Abierto el socket para el cliente...\n");
+
+  //Conectamos
+  int conectar = connect(client, (struct sockaddr *)&direccion_cliente, sizeof(direccion_cliente));
+  if (conectar != 0)
+  {
+  	printf("Error : No es posible conectar\n");
+  	return 1;
+  }
+  printf("conectado...\n");
+  
+  //Enviamos la ruta del archivo para que el servidor lo busque
+  send(client, solicitud, strlen(solicitud), 0);
+  
+  //Leemos la respuesta del servidor
 
        char *answerstring;
        answerstring = malloc(10);
+	recv(client, answerstring, 1, 0);
        if (!answerstring)
          return MHD_NO;
        con_info->answerstring = answerstring;

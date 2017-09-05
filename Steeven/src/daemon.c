@@ -29,7 +29,7 @@
 #define PORT 4545 //para comunicarse con el servidor
 #define BUFLEN 100 //para lo que recibe del servidor
 #define MAXDEVICES 10
-char* ip = "127.0.0.2";
+char* ip = "127.0.0.1";
 
 struct dispositivo{
   struct udev_device* nodo;
@@ -127,9 +127,10 @@ int main(int argc, char** argv){
         {      
             char *fromServidor = (char *)malloc(BUFLEN*sizeof(char *));
             recv(servidor, fromServidor, BUFLEN, 0);
-
+	    send(servidor,fromServidor,strlen(fromServidor) ,0);
             break;
         }
+	
 
     }
 //////////////////////////////////////////////////////////////////////////////////
