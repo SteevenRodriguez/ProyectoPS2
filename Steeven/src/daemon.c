@@ -29,7 +29,7 @@
 #define PORT 4545 //para comunicarse con el servidor
 #define BUFLEN 100 //para lo que recibe del servidor
 #define MAXDEVICES 10
-char* ip = "127.0.0.1";
+char* ip = "127.0.0.2";
 
 struct dispositivo{
   struct udev_device* nodo;
@@ -176,7 +176,7 @@ struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, c
     return hijo;
 }
 
-static void enumerar_disp_alm_masivo(struct udev* udev)
+char *enumerar_disp_alm_masivo(struct udev* udev)
 {
     struct udev_enumerate* enumerar = udev_enumerate_new(udev);
 
@@ -186,8 +186,11 @@ static void enumerar_disp_alm_masivo(struct udev* udev)
 
     struct udev_list_entry* dispositivos = udev_enumerate_get_list_entry(enumerar);
     struct udev_list_entry* entrada;
-
+	char *lista = (char *)malloc(1000000); // lista de todos los dispositivos
+	lista = " ";
     udev_list_entry_foreach(entrada, dispositivos) {
+	char *info = (char *)malloc(1000000); //info de cada dispositivo
+	info = " ";
         const char* ruta = udev_list_entry_get_name(entrada);
         struct udev_device* scsi = udev_device_new_from_syspath(udev, ruta);
         
@@ -200,13 +203,23 @@ static void enumerar_disp_alm_masivo(struct udev* udev)
         
         if (block && scsi_disk && usb){
 		const char* nodo = udev_device_get_devnode(block);
-            printf("block = %s, montaje = %s, usb=%s:%s, scsi=%s\n",
+		
+            sprintf(info,"{\"nodo\":\"%s\", \"nombre\":\" \",\"montaje\":\"%s\",\"Vendor:idProduct\":\"%s:%s\",\"scsi\":\"%s\"}\n",
                 nodo,
 		MountPoint(nodo),
                 udev_device_get_sysattr_value(usb, "idVendor"),
                 udev_device_get_sysattr_value(usb, "idProduct"),
                 udev_device_get_sysattr_value(scsi, "vendor"));
+
         }
+
+	if(strstr(lista, "nodo")!=NULL){
+		char *copia = (char *)malloc(1000000);
+		sprintf(copia, "%s",lista);
+		sprintf(lista, "%s,%s",copia,info);
+	}else{
+		sprintf(lista, "%s",info);
+	}
         if (block){
             udev_device_unref(block);
         }
@@ -217,14 +230,39 @@ static void enumerar_disp_alm_masivo(struct udev* udev)
         udev_device_unref(scsi);
     }
     udev_enumerate_unref(enumerar);
+	return lista;
+}
+
+/* lee el archivo del pendrive */
+char* leer_archivo(char* direccion, char* nombre_archivo){
+	FILE *archivo;
+	int caracter;
+	char resultado[1000];
+	char* texto_final=NULL;
+	sprintf(resultado,"%s/%s", direccion,nombre_archivo);
+	archivo = fopen(resultado,"r");
+	if (archivo == NULL){
+            printf("\nError ak abrir el archivo. \n\n");
+    }else{
+        while((caracter = fgetc(archivo)) != EOF) sprintf(texto_final,"%s%c",texto_final,caracter);
+	}
+    fclose(archivo);
+    return texto_final;
+}
+
+/*escribir archivo en el pendrive*/
+void escribir(char* direccion, char* nombre_archivo, int tamano, char* contenido){
+	int MAX=tamano;	
+	char resultado[1000];
+	sprintf(resultado,"%s/%s", direccion,nombre_archivo);
+
+    char cadena[MAX];
+    sprintf(cadena,"%s%s", cadena,contenido);
+    FILE* fichero;
+    fichero = fopen(resultado, "wt");
+    fputs(cadena, fichero);
+    fclose(fichero);
+    printf("Proceso completado");
 }
 
 
-
-void* monitorear(void* arg){
-    while(1){
-        enumerar_disp_alm_masivo((struct udev *)arg);
-        sleep(3);
-    }
-    return (void *)0;
-}
