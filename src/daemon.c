@@ -40,6 +40,138 @@ struct dispositivo{
 
 struct dispositivo dispositivos[MAXDEVICES];
 
+const char* MountPoint(const char *dir){
+	FILE *mtabfile;
+	struct mntent *mt;
+	
+	mtabfile = setmntent("/etc/mtab", "r");
+	if (mtabfile == NULL) {
+		return "error en al crear FILE mtab";
+	}
+	
+	while ((mt = getmntent(mtabfile)) != NULL){
+		
+		if(strstr(mt->mnt_fsname,dir)>0){
+			endmntent(mtabfile);
+			return  mt->mnt_dir;
+		}
+	}
+	endmntent(mtabfile);
+	return  "no se encuentra montado dicho dispositivo";
+}
+
+struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, const char* subsistema)
+{
+    struct udev_device* hijo = NULL;
+    struct udev_enumerate* enumerar = udev_enumerate_new(udev);
+
+    udev_enumerate_add_match_parent(enumerar, padre);
+    udev_enumerate_add_match_subsystem(enumerar, subsistema);
+    udev_enumerate_scan_devices(enumerar);
+
+    struct udev_list_entry* dispositivos = udev_enumerate_get_list_entry(enumerar);
+    struct udev_list_entry* entrada;
+
+    udev_list_entry_foreach(entrada, dispositivos) {
+        const char* ruta = udev_list_entry_get_name(entrada);
+        hijo = udev_device_new_from_syspath(udev, ruta);
+    }
+
+    udev_enumerate_unref(enumerar);
+    return hijo;
+}
+
+char *enumerar_disp_alm_masivo(struct udev* udev)
+{
+    struct udev_enumerate* enumerar = udev_enumerate_new(udev);
+
+    udev_enumerate_add_match_subsystem(enumerar, "scsi");
+    udev_enumerate_add_match_property(enumerar, "DEVTYPE", "scsi_device");
+    udev_enumerate_scan_devices(enumerar);
+
+    struct udev_list_entry* dispositivos = udev_enumerate_get_list_entry(enumerar);
+    struct udev_list_entry* entrada;
+	char *lista = (char *)malloc(1000000); // lista de todos los dispositivos
+	int n = 0;
+    udev_list_entry_foreach(entrada, dispositivos) {
+	char *info = (char *)malloc(1000000); //info de cada dispositivo
+	
+        const char* ruta = udev_list_entry_get_name(entrada);
+        struct udev_device* scsi = udev_device_new_from_syspath(udev, ruta);
+        
+        struct udev_device* block = obtener_hijo(udev, scsi, "block");
+        struct udev_device* scsi_disk = obtener_hijo(udev, scsi, "scsi_disk");
+
+        struct udev_device* usb 
+            = udev_device_get_parent_with_subsystem_devtype(scsi, "usb", "usb_device");
+        
+        
+        if (block && scsi_disk && usb){
+		const char* nodo = udev_device_get_devnode(block);
+		
+            	n = sprintf(info,"{\"nodo\":\"%s\", \"nombre\":\" \",\"montaje\":\"%s\",\"Vendor:idProduct\":\"%s:%s\",\"scsi\":\"%s\"}\n",
+                nodo,
+		MountPoint(nodo),
+                udev_device_get_sysattr_value(usb, "idVendor"),
+                udev_device_get_sysattr_value(usb, "idProduct"),
+                udev_device_get_sysattr_value(scsi, "vendor"));
+
+        }
+
+	if(strstr(lista, "nodo")!=NULL){
+		char *copia = (char *)malloc(1000000);
+		sprintf(copia, "%s",lista);
+		sprintf(lista, "%s,%s",copia,info);
+	}else{
+		sprintf(lista, "%s",info);
+	}
+        if (block){
+            udev_device_unref(block);
+        }
+        if (scsi_disk){
+            udev_device_unref(scsi_disk);
+        }
+        
+        udev_device_unref(scsi);
+    }
+	if(n==0){ 
+		lista=" ";
+	}
+    udev_enumerate_unref(enumerar);
+	return lista;
+}
+
+/* lee el archivo del pendrive */
+char* leer_archivo(char* direccion, char* nombre_archivo){
+	FILE *archivo;
+	int caracter;
+	char resultado[1000];
+	char* texto_final=NULL;
+	sprintf(resultado,"%s/%s", direccion,nombre_archivo);
+	archivo = fopen(resultado,"r");
+	if (archivo == NULL){
+            printf("\nError ak abrir el archivo. \n\n");
+    }else{
+        while((caracter = fgetc(archivo)) != EOF) sprintf(texto_final,"%s%c",texto_final,caracter);
+	}
+    fclose(archivo);
+    return texto_final;
+}
+
+/*escribir archivo en el pendrive*/
+void escribir(char* direccion, char* nombre_archivo, int tamano, char* contenido){
+	int MAX=tamano;	
+	char resultado[1000];
+	sprintf(resultado,"%s/%s", direccion,nombre_archivo);
+
+    char cadena[MAX];
+    sprintf(cadena,"%s%s", cadena,contenido);
+    FILE* fichero;
+    fichero = fopen(resultado, "wt");
+    fputs(cadena, fichero);
+    fclose(fichero);
+    printf("Proceso completado");
+}
 
 int main(int argc, char** argv){
 
@@ -125,10 +257,24 @@ int main(int argc, char** argv){
 
         if (pid==0)
         {      
-            char *fromServidor = (char *)malloc(BUFLEN*sizeof(char *));
-            recv(servidor, fromServidor, BUFLEN, 0);
-	    send(servidor,fromServidor,strlen(fromServidor) ,0);
-            break;
+            char *solicitud = (char *)malloc(BUFLEN*sizeof(char *));
+            recv(servidor, solicitud, BUFLEN, 0);
+
+		printf("%s\n", solicitud);
+	  	//tratamiento tipo de solicitud
+		char* is = strstr(solicitud, "escribir_archivo");
+		
+	  	
+		struct udev *udeva;
+		udeva = udev_new();
+		
+		char* lista =  enumerar_disp_alm_masivo(udeva);
+		
+		printf("%s\n",lista);
+		send(servidor,lista,strlen(lista),0);
+		close(servidor);
+		
+	
         }
 	
 
@@ -136,134 +282,6 @@ int main(int argc, char** argv){
 //////////////////////////////////////////////////////////////////////////////////
     return (0);
 }
-const char* MountPoint(const char *dir){
-	FILE *mtabfile;
-	struct mntent *mt;
-	
-	mtabfile = setmntent("/etc/mtab", "r");
-	if (mtabfile == NULL) {
-		return "error en al crear FILE mtab";
-	}
-	
-	while ((mt = getmntent(mtabfile)) != NULL){
-		
-		if(strstr(mt->mnt_fsname,dir)>0){
-			endmntent(mtabfile);
-			return  mt->mnt_dir;
-		}
-	}
-	endmntent(mtabfile);
-	return  "no se encuentra montado dicho dispositivo";
-}
 
-struct udev_device* obtener_hijo(struct udev* udev, struct udev_device* padre, const char* subsistema)
-{
-    struct udev_device* hijo = NULL;
-    struct udev_enumerate* enumerar = udev_enumerate_new(udev);
-
-    udev_enumerate_add_match_parent(enumerar, padre);
-    udev_enumerate_add_match_subsystem(enumerar, subsistema);
-    udev_enumerate_scan_devices(enumerar);
-
-    struct udev_list_entry* dispositivos = udev_enumerate_get_list_entry(enumerar);
-    struct udev_list_entry* entrada;
-
-    udev_list_entry_foreach(entrada, dispositivos) {
-        const char* ruta = udev_list_entry_get_name(entrada);
-        hijo = udev_device_new_from_syspath(udev, ruta);
-    }
-
-    udev_enumerate_unref(enumerar);
-    return hijo;
-}
-
-char *enumerar_disp_alm_masivo(struct udev* udev)
-{
-    struct udev_enumerate* enumerar = udev_enumerate_new(udev);
-
-    udev_enumerate_add_match_subsystem(enumerar, "scsi");
-    udev_enumerate_add_match_property(enumerar, "DEVTYPE", "scsi_device");
-    udev_enumerate_scan_devices(enumerar);
-
-    struct udev_list_entry* dispositivos = udev_enumerate_get_list_entry(enumerar);
-    struct udev_list_entry* entrada;
-	char *lista = (char *)malloc(1000000); // lista de todos los dispositivos
-	lista = " ";
-    udev_list_entry_foreach(entrada, dispositivos) {
-	char *info = (char *)malloc(1000000); //info de cada dispositivo
-	info = " ";
-        const char* ruta = udev_list_entry_get_name(entrada);
-        struct udev_device* scsi = udev_device_new_from_syspath(udev, ruta);
-        
-        struct udev_device* block = obtener_hijo(udev, scsi, "block");
-        struct udev_device* scsi_disk = obtener_hijo(udev, scsi, "scsi_disk");
-
-        struct udev_device* usb 
-            = udev_device_get_parent_with_subsystem_devtype(scsi, "usb", "usb_device");
-        
-        
-        if (block && scsi_disk && usb){
-		const char* nodo = udev_device_get_devnode(block);
-		
-            sprintf(info,"{\"nodo\":\"%s\", \"nombre\":\" \",\"montaje\":\"%s\",\"Vendor:idProduct\":\"%s:%s\",\"scsi\":\"%s\"}\n",
-                nodo,
-		MountPoint(nodo),
-                udev_device_get_sysattr_value(usb, "idVendor"),
-                udev_device_get_sysattr_value(usb, "idProduct"),
-                udev_device_get_sysattr_value(scsi, "vendor"));
-
-        }
-
-	if(strstr(lista, "nodo")!=NULL){
-		char *copia = (char *)malloc(1000000);
-		sprintf(copia, "%s",lista);
-		sprintf(lista, "%s,%s",copia,info);
-	}else{
-		sprintf(lista, "%s",info);
-	}
-        if (block){
-            udev_device_unref(block);
-        }
-        if (scsi_disk){
-            udev_device_unref(scsi_disk);
-        }
-        
-        udev_device_unref(scsi);
-    }
-    udev_enumerate_unref(enumerar);
-	return lista;
-}
-
-/* lee el archivo del pendrive */
-char* leer_archivo(char* direccion, char* nombre_archivo){
-	FILE *archivo;
-	int caracter;
-	char resultado[1000];
-	char* texto_final=NULL;
-	sprintf(resultado,"%s/%s", direccion,nombre_archivo);
-	archivo = fopen(resultado,"r");
-	if (archivo == NULL){
-            printf("\nError ak abrir el archivo. \n\n");
-    }else{
-        while((caracter = fgetc(archivo)) != EOF) sprintf(texto_final,"%s%c",texto_final,caracter);
-	}
-    fclose(archivo);
-    return texto_final;
-}
-
-/*escribir archivo en el pendrive*/
-void escribir(char* direccion, char* nombre_archivo, int tamano, char* contenido){
-	int MAX=tamano;	
-	char resultado[1000];
-	sprintf(resultado,"%s/%s", direccion,nombre_archivo);
-
-    char cadena[MAX];
-    sprintf(cadena,"%s%s", cadena,contenido);
-    FILE* fichero;
-    fichero = fopen(resultado, "wt");
-    fputs(cadena, fichero);
-    fclose(fichero);
-    printf("Proceso completado");
-}
 
 

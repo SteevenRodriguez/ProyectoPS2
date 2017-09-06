@@ -22,6 +22,7 @@
    #endif
    
    #define PORT            4545
+   #define DAEMON	   4546
    #define POSTBUFFERSIZE  1024
    #define MAXNAMESIZE     1000
    #define MAXANSWERSIZE   1024
@@ -112,7 +113,7 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 struct sockaddr_in direccion_cliente;
     memset(&direccion_cliente, 0, sizeof(direccion_cliente));
   direccion_cliente.sin_family = AF_INET;		
-  direccion_cliente.sin_port = htons(PORT);	
+  direccion_cliente.sin_port = htons(DAEMON);	
   direccion_cliente.sin_addr.s_addr = inet_addr(ip);
 
   client = socket(((struct sockaddr *)&direccion_cliente)->sa_family, SOCK_STREAM, 0);
@@ -140,6 +141,7 @@ struct sockaddr_in direccion_cliente;
        char *answerstring;
        answerstring = malloc(10);
 	recv(client, answerstring, 1, 0);
+	printf("%s\n",answerstring);
        if (!answerstring)
          return MHD_NO;
        con_info->answerstring = answerstring;
