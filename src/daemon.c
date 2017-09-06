@@ -197,9 +197,7 @@ int main(int argc, char** argv){
 
     chdir("/");
 
-    pthread_t hiloActualizacion;
-
-    struct udev *p = udev_new();
+    
 
 ////////////////////////////////S E R V I D O R///////////////////////////////////
     int daemon_server;
@@ -262,18 +260,18 @@ int main(int argc, char** argv){
 
 		printf("%s\n", solicitud);
 	  	//tratamiento tipo de solicitud
-		char* is = strstr(solicitud, "escribir_archivo");
+		if(strstr(solicitud, "listar_dispositivos") != NULL){
 		
 	  	
-		struct udev *udeva;
-		udeva = udev_new();
+			struct udev *udeva;
+			udeva = udev_new();
 		
-		char* lista =  enumerar_disp_alm_masivo(udeva);
+			char* lista =  enumerar_disp_alm_masivo(udeva);
 		
-		printf("%s\n",lista);
-		send(servidor,lista,strlen(lista),0);
-		close(servidor);
-		
+			printf("%s\n",lista);
+			send(servidor,lista,strlen(lista),0);
+			close(servidor);
+		}
 	
         }
 	

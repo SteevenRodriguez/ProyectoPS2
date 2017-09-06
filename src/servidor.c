@@ -15,6 +15,7 @@
    #include <stdlib.h>
    #include "jsmn.h"
    #include <netinet/in.h>
+   #include <arpa/inet.h>
    
    #if defined(_MSC_VER) && _MSC_VER+0 <= 1800
    /* Substitution is OK while return value is not used */
@@ -30,7 +31,7 @@
    #define GET             0
    #define POST            1
    char* ip = "127.0.0.1";
-   const char *JSON_STRING;
+   
    struct connection_info_struct
    {
      int connectiontype;
@@ -78,7 +79,7 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
         la respuesta amacenarla en answerstring para enviarsela al cliente
        */
    
-	const char *JSON_STRING=data;
+	
 	int i;
 	int r;
 	jsmn_parser p;
@@ -138,9 +139,8 @@ struct sockaddr_in direccion_cliente;
   
   //Leemos la respuesta del servidor
 
-       char *answerstring;
-       answerstring = malloc(10);
-	recv(client, answerstring, 1, 0);
+       char *answerstring = (char *)malloc(1000000);
+	recv(client, answerstring, POSTBUFFERSIZE, 0);
 	printf("%s\n",answerstring);
        if (!answerstring)
          return MHD_NO;
@@ -219,7 +219,7 @@ struct sockaddr_in direccion_cliente;
          return MHD_YES;
        }
        else if (NULL != con_info->answerstring)
-         return send_page (connection, "Json de respuesta a POST");
+         return send_page (connection, con_info->answerstring);
      }
      printf("Solicitud no se puede procesar...\n");
      return send_page (connection, "Metodo no existente");
