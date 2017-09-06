@@ -72,14 +72,7 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
      struct connection_info_struct *con_info = coninfo_cls;
      if (0 == strcmp (key, "json")){
        printf("%s: %s\n", key, data);
-       /*
-        Usar jsmn para parsear el json que envio el cliente
-        sacar la solicitud y dependiendo esta, comunicarse con el daemon
-        por medio de sockets para cumplir lo que pide
-        la respuesta amacenarla en answerstring para enviarsela al cliente
-       */
-   
-	
+   	
 	int i;
 	int r;
 	jsmn_parser p;
@@ -202,10 +195,7 @@ static int answer_to_connection (void *cls, struct MHD_Connection *connection,
      if (0 == strcmp(method, "GET") && 0 == strcmp(url, "/listar_dispositivos")){
        printf("Obteniendo lista de dispositivos conectados...\n");
 	
-       /*
-         comunicarse con el daemon para traer la lista de dispositivos conectados...
-         armar la respuesta y responer como JSON
-       */
+       
 	int client;
 	struct sockaddr_in direccion_cliente;
     	memset(&direccion_cliente, 0, sizeof(direccion_cliente));

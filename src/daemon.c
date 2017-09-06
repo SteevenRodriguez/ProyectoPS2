@@ -20,12 +20,6 @@
 #include <pthread.h>
 #include <mntent.h>
 
-/*
-    while(1){
-        //obtener usb hacerlo en un hilo (con sleep)
-        recive()/read() //conexion con el daemon_server
-    }
-*/
 #define PORT 4546 //para comunicarse con el servidor
 #define BUFLEN 100 //para lo que recibe del servidor
 #define MAXDEVICES 10
@@ -198,20 +192,17 @@ int main(int argc, char** argv){
     chdir("/");
 
     
-
-////////////////////////////////S E R V I D O R///////////////////////////////////
     int daemon_server;
     //Direccion del daemon_server
     struct sockaddr_in direccion_daemon_server;
     //ponemos en 0 la estructura direccion_daemon_server
     memset(&direccion_daemon_server, 0, sizeof(direccion_daemon_server));
 
-    //llenamos los campos
-    //IPv4
+   
     direccion_daemon_server.sin_family = AF_INET;
-    //Convertimos el numero de puerto al endianness de la red
+    
     direccion_daemon_server.sin_port = htons(PORT);
-    //Nos vinculamos a la interface localhost o podemos usar INADDR_ANY para ligarnos A TODAS las interfaces
+   
     direccion_daemon_server.sin_addr.s_addr = inet_addr(ip);
 
     //Abrimos un socket para el daemon
@@ -277,7 +268,6 @@ int main(int argc, char** argv){
 	
 
     }
-//////////////////////////////////////////////////////////////////////////////////
     return (0);
 }
 

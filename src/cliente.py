@@ -2,8 +2,7 @@
 import requests
 import json
 
-def printmenu():
-    print("\t### Menu ### ")
+def menu():
     print("1. Listar dispositivos")
     print("2. Nombrar dispositivo")
     print("3. Leer archivo")
@@ -20,7 +19,7 @@ url = "http://" + ip + ":" + port
 op = ""
 
 while (op!="5"):
-    printmenu()
+    menu()
     op = input("Seleccione una opcion: ")
     
     while (op!="1" and op!="2" and op!="3" and op!="4" and op!="5"):
