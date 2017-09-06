@@ -173,6 +173,7 @@ static int answer_to_connection (void *cls, struct MHD_Connection *connection,
                             const char *url, const char *method,
                             const char *version, const char *upload_data,
                             size_t *upload_data_size, void **con_cls){
+	char* jsonresp=malloc(10000*sizeof(char *));
      if (NULL == *con_cls){
        struct connection_info_struct *con_info;
        con_info = malloc (sizeof (struct connection_info_struct));
@@ -237,9 +238,11 @@ static int answer_to_connection (void *cls, struct MHD_Connection *connection,
 	       char *answerstring = (char *)malloc(1000000);
 		recv(client, answerstring, POSTBUFFERSIZE, 0);
 		printf("%s\n",answerstring);
+
+	       sprintf(jsonresp,"{\"solicitud\": \"listar_dispositivos\", \"dispositivos\": [%s ], \n"
+					"\"status\": \"0\", \"str_error\" : 0}",answerstring);
 	       
-	       
-	       return send_page (connection, answerstring);
+	       return send_page (connection, jsonresp);
 	}
      else if (0 == strcmp(method, "POST")){
        struct connection_info_struct *con_info = *con_cls;
