@@ -169,7 +169,7 @@ struct sockaddr_in direccion_cliente;
      *con_cls = NULL;
    }
       
-   static int answer_to_connection (void *cls, struct MHD_Connection *connection,
+static int answer_to_connection (void *cls, struct MHD_Connection *connection,
                             const char *url, const char *method,
                             const char *version, const char *upload_data,
                             size_t *upload_data_size, void **con_cls){
@@ -200,13 +200,47 @@ struct sockaddr_in direccion_cliente;
    
      if (0 == strcmp(method, "GET") && 0 == strcmp(url, "/listar_dispositivos")){
        printf("Obteniendo lista de dispositivos conectados...\n");
+	
        /*
          comunicarse con el daemon para traer la lista de dispositivos conectados...
          armar la respuesta y responer como JSON
        */
-       return send_page (connection, "json de respuesta a GET");
-     }
-   
+	int client;
+	struct sockaddr_in direccion_cliente;
+    	memset(&direccion_cliente, 0, sizeof(direccion_cliente));
+  	direccion_cliente.sin_family = AF_INET;		
+  	direccion_cliente.sin_port = htons(DAEMON);	
+  	direccion_cliente.sin_addr.s_addr = inet_addr(ip);
+
+	  client = socket(((struct sockaddr *)&direccion_cliente)->sa_family, SOCK_STREAM, 0);
+	  if (client == -1)
+	  {
+	  	printf("Error al abrir el socket\n");
+	  	return -1;
+	  }
+	  printf("Abierto el socket para el cliente...\n");
+
+	  //Conectamos
+	  int conectar = connect(client, (struct sockaddr *)&direccion_cliente, sizeof(direccion_cliente));
+	  if (conectar != 0)
+	  {
+	  	printf("Error : No es posible conectar\n");
+	  	return 1;
+	  }
+	  printf("conectado...\n");
+	  char* solicitud ="listar_dispositivos";
+	  //Enviamos la ruta del archivo para que el servidor lo busque
+	  send(client, solicitud, strlen(solicitud), 0);
+	  
+	  //Leemos la respuesta del servidor
+
+	       char *answerstring = (char *)malloc(1000000);
+		recv(client, answerstring, POSTBUFFERSIZE, 0);
+		printf("%s\n",answerstring);
+	       
+	       
+	       return send_page (connection, answerstring);
+	}
      else if (0 == strcmp(method, "POST")){
        struct connection_info_struct *con_info = *con_cls;
          
@@ -223,9 +257,8 @@ struct sockaddr_in direccion_cliente;
      }
      printf("Solicitud no se puede procesar...\n");
      return send_page (connection, "Metodo no existente");
-   }
-    
-   int main (){
+}
+int main (){
      struct MHD_Daemon *daemon;
    
      daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL,
@@ -240,4 +273,4 @@ struct sockaddr_in direccion_cliente;
      MHD_stop_daemon (daemon);
    
      return 0;
-   }
+}
