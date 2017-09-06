@@ -1,10 +1,9 @@
-todo: libjsmn servidor listener  
+todo: libjsmn servidor daemon  
 
 servidor: objects
 	gcc -Wall -I./include/ ./obj/servidor.o ./lib/libjsmn.a -lmicrohttpd -o ./bin/servidor
 
-listener: objects
-	gcc -Wall ./obj/listener.o -ludev -o ./bin/listener
+daemon: objects
 	gcc -Wall ./obj/daemon.o -ludev -o ./bin/daemon
 
 libjsmn: objects
