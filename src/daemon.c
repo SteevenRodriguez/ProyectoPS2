@@ -26,7 +26,7 @@
         recive()/read() //conexion con el daemon_server
     }
 */
-#define PORT 4545 //para comunicarse con el servidor
+#define PORT 4546 //para comunicarse con el servidor
 #define BUFLEN 100 //para lo que recibe del servidor
 #define MAXDEVICES 10
 char* ip = "127.0.0.1";
